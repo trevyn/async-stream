@@ -268,6 +268,40 @@ pub fn try_stream_inner(input: TokenStream) -> TokenStream {
     .into()
 }
 
+#[proc_macro_attribute]
+#[doc(hidden)]
+pub fn try_stream_attribute(crate_path: TokenStream, input: TokenStream) -> TokenStream {
+    let crate_path = TokenStream2::from(crate_path);
+
+    let mut new_fn = syn::parse_macro_input!(input as syn::ItemFn);
+
+    let mut stmts: Vec<syn::Stmt> = new_fn.block.stmts;
+
+    let mut scrub = Scrub::new(true, &crate_path);
+
+    for mut stmt in &mut stmts {
+        scrub.visit_stmt_mut(&mut stmt);
+    }
+
+    let dummy_yield = if scrub.has_yielded {
+        None
+    } else {
+        Some(quote!(if false {
+            __yield_tx.send(()).await;
+        }))
+    };
+
+    new_fn.block = syn::parse_quote!({
+        let (mut __yield_tx, __yield_rx) = #crate_path::yielder::pair();
+        #crate_path::AsyncStream::new(__yield_rx, async move {
+            #dummy_yield
+            #(#stmts)*
+        })
+    });
+
+    quote!(#new_fn).into()
+}
+
 /// Replace `for await` with `#[await] for`, which will be later transformed into a `next` loop.
 fn replace_for_await(input: impl IntoIterator<Item = TokenTree>) -> TokenStream2 {
     let mut input = input.into_iter().peekable();

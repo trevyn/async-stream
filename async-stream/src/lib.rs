@@ -168,6 +168,8 @@ pub use crate::async_stream::AsyncStream;
 #[doc(hidden)]
 pub use async_stream_impl;
 
+pub use async_stream_impl::try_stream_attribute;
+
 /// Asynchronous stream
 ///
 /// See [crate](index.html) documentation for more details.
