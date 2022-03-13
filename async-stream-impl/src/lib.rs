@@ -273,7 +273,11 @@ pub fn try_stream_inner(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 #[doc(hidden)]
 pub fn try_stream_attribute(crate_path: TokenStream, input: TokenStream) -> TokenStream {
-    let crate_path = TokenStream2::from(crate_path);
+    let mut crate_path = TokenStream2::from(crate_path);
+
+    if crate_path.is_empty() {
+        crate_path = quote!(::async_stream);
+    }
 
     let mut new_fn = syn::parse_macro_input!(input as syn::ItemFn);
 
@@ -281,8 +285,8 @@ pub fn try_stream_attribute(crate_path: TokenStream, input: TokenStream) -> Toke
 
     let mut scrub = Scrub::new(true, &crate_path);
 
-    for mut stmt in &mut stmts {
-        scrub.visit_stmt_mut(&mut stmt);
+    for stmt in &mut stmts {
+        scrub.visit_stmt_mut(stmt);
     }
 
     let dummy_yield = if scrub.has_yielded {
